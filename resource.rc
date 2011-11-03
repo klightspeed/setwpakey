@@ -1,0 +1,5 @@
+#include "resource.h"
+
+// Created from Gnome's launcher-program icon
+IDI_SETWPAKEY       ICON         "setwpakey.ico"
+

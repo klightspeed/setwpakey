@@ -1,0 +1,8 @@
+*.o
+*.a
+*~
+.*.sw?
+*.exe
+wlankeys.h
+setwpakey-src.zip
+wlankeys.ini
