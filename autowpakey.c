@@ -17,6 +17,7 @@ int main (int argc, char **argv){
     int status = ERROR_SUCCESS;
     int i, j, k;
     int numkeys = 0;
+    int clean_profiles = 0;
     WLANKEY *allkeys;
     WLANKEY *keys;
     fprintf (stderr, "Entering main\n");
@@ -34,6 +35,11 @@ int main (int argc, char **argv){
                 status = errno;
             } else {
                 k = 0;
+		for (i = 1; i < argc; i++){
+		    if (!strcmp(argv[i], "--clean")){
+		        clean_profiles = 1;
+		    }
+		}
                 for (i = 0; i < numkeys; i++){
                     char ssid[33];
                     for (j = 0; j < 33; j++){
@@ -52,6 +58,9 @@ int main (int argc, char **argv){
     }
 #ifndef TEST
     if (status == ERROR_SUCCESS){
+	if (clean_profiles){
+	    RemoveWlanProfiles();
+	}
         status = SetWlanProfiles (keys, &reason);
     }
     if (status != ERROR_SUCCESS){

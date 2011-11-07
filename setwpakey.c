@@ -158,6 +158,29 @@ int DecodeWLANKeys (WLANKEY **keys, int *numkeys){
 	return ERROR_SUCCESS;
 }
 
+/*
+ * Remove all profiles on an interface
+ */
+
+DWORD RemoveIfaceProfiles (HANDLE h, 
+			   const GUID *iface){
+	WLAN_PROFILE_INFO_LIST *profile_list = NULL;
+	DWORD status;
+	int i;
+
+	status = WlanGetProfileList(h, iface, NULL, &profile_list);
+	if (status == ERROR_SUCCESS && profile_list != NULL){
+		for (i = 0; status == ERROR_SUCCESS && i < profile_list->dwNumberOfItems; i++){
+			WLAN_PROFILE_INFO *profile = (WLAN_PROFILE_INFO *)(profile_list->ProfileInfo + i);
+			if (profile != NULL){
+				status = WlanDeleteProfile(h, iface, profile->strProfileName, NULL);
+			}
+		}
+		WlanFreeMemory(profile_list);
+	}
+
+	return status;
+}
 
 /*
  * Set the key for an SSID on an interface
@@ -312,6 +335,33 @@ DWORD GetIfaceAvailableSSID (HANDLE h,
 	} else {
 		fwprintf (stderr, L"NetList is NULL\n");
 	}
+	return status;
+}
+
+/*
+ * Removes existing profiles on all interfaces
+ */
+
+DWORD RemoveWlanProfiles (){
+	DWORD apiver;
+	DWORD status;
+	HANDLE h;
+	WLAN_INTERFACE_INFO_LIST *iflist;
+	GUID *iface;
+	int i;
+
+	status = WlanOpenHandle (1, NULL, &apiver, &h);
+	if (status != ERROR_SUCCESS){
+		return status;
+	}
+	status = WlanEnumInterfaces (h, NULL, &iflist);
+	for (i=0; status == ERROR_SUCCESS && i < iflist->dwNumberOfItems; i++){
+		iface = &(iflist->InterfaceInfo[i].InterfaceGuid);
+		status = RemoveIfaceProfiles (h, iface);
+	}
+
+	WlanFreeMemory (iflist);
+	WlanCloseHandle (h, NULL);
 	return status;
 }
 
