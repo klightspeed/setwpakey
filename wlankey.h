@@ -1,6 +1,8 @@
 #ifndef WLANKEY_H
 #define WLANKEY_H
 
+#include "wlanapi.h"
+
 typedef struct {
     int prev_index;
     int next_index;
@@ -31,4 +33,29 @@ typedef struct {
     } wpa;
 } WLANKEY;
 
+void XMLEntities (wchar_t *out, const wchar_t *in, const unsigned int outlen);
+int DecodeWLANKeys (WLANKEY **keys, int *numkeys);
+
+DWORD RemoveIfaceProfiles (HANDLE h, const GUID *iface);
+DWORD RemoveWlanProfiles ();
+
+DWORD SetIfaceProfile (HANDLE h,
+                       const GUID *iface,
+		       const wchar_t *ifname,
+                       WLANKEY *key,
+                       WLAN_REASON_CODE *reason);
+DWORD SetIfaceProfiles (HANDLE h,
+                        const GUID *iface,
+			const wchar_t *ifname,
+			WLANKEY *keys,
+                        WLAN_REASON_CODE *reason);
+DWORD SetWlanProfiles (WLANKEY *keys,
+                       WLAN_REASON_CODE *reason);
+
+DWORD GetIfaceAvailableSSID (HANDLE h,
+                             const GUID *iface,
+                             const wchar_t *ifname,
+                             WLANKEY *keys,
+                             int *index,
+                             WLAN_REASON_CODE *reason);
 #endif /* WLANKEY_H */

@@ -6,7 +6,7 @@ WINE=
 
 .PHONY: all test clean distclean
 
-all: autowpakey.exe wpakeygui.exe
+all: setwpakey.exe wpakeygui.exe
 
 clean:
 	rm -f *.o *.a *~ mkwlankeys.exe wlankeys.h
@@ -17,20 +17,20 @@ distclean:
 wlankeys.h: mkwlankeys.exe
 	$(WINE) ./$< >$@
 
-autowpakey.exe: autowpakey.o setwpakey.o resource.o tea.o libwlanapi.a 
+setwpakey.exe: setwpakey.o wlankey.o resource.o tea.o libwlanapi.a 
 	$(CC) -o $@ $+ -mconsole
 
-wpakeygui.exe: wpakeygui.o setwpakey.o dialog.o tea.o libwlanapi.a
+wpakeygui.exe: wpakeygui.o wlankey.o dialog.o tea.o libwlanapi.a
 	$(CC) -o $@ $+ -mwindows
 
 mkwlankeys.exe: mkwlankeys.o tea.o
 	$(CC) -o $@ $+ -lkernel32
 
-autowpakey.o: autowpakey.c setwpakey.h wlankeys.h wlankey.h tea.h
+setwpakey.o: setwpakey.c wlankey.h tea.h
 
-wpakeygui.o: wpakeygui.c setwpakey.h wlankeys.h wlankey.h tea.h
+wpakeygui.o: wpakeygui.c wlankey.h tea.h
 
-setwpakey.o: setwpakey.c wlankeys.h wlankey.h tea.h
+wlankey.o: wlankeys.h wlankey.h tea.h
 
 mkwlankeys.o: mkwlankeys.c wlankey.h tea.h wlankeys.ini
 

@@ -6,9 +6,7 @@
 #include <wchar.h>
 #include "wlanapi.h"
 #include "wlankey.h"
-#include "wlankeys.h"
 #include "tea.h"
-#include "setwpakey.h"
 #include "dialog.h"
 
 static WLANKEY *keys;
