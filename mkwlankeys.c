@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
+#include <ddk/ntifs.h>
 #include "wlankey.h"
 #include "tea.h"
 
@@ -20,8 +21,12 @@ void gethashbytes (unsigned char *out, wchar_t *in){
 
 int main (void){
     unsigned char *out;
+    unsigned char *compr;
+    unsigned char *wkspace;
     int nrkeys;
     int datalen;
+    int comprlen;
+    int wkspacelen;
     int i, j;
     int c;
     int p, np;
@@ -53,9 +58,18 @@ int main (void){
     nrkeys++;
     
     datalen = nrkeys * sizeof(WLANKEY);
+    wkspacelen = 0;
+    RtlGetCompressionWorkSpaceSize(
+        COMPRESSION_FORMAT_LZNT1 | COMPRESSION_ENGINE_MAXIMUM,
+       	(ULONG *)&wkspacelen,
+       	(ULONG *)&comprlen
+    );
 
     out = malloc (datalen);
-    if (out == NULL){
+    compr = malloc (datalen);
+    wkspace = malloc (wkspacelen);
+
+    if (out == NULL || compr == NULL){
     	perror ("malloc");
         return 1;
     }
@@ -185,11 +199,23 @@ int main (void){
 	key_number++;
     }
 
+    comprlen = 0;
+    RtlCompressBuffer(
+        COMPRESSION_FORMAT_LZNT1 | COMPRESSION_ENGINE_MAXIMUM, 
+	out,
+	(ULONG)datalen,
+	compr,
+	(ULONG)datalen,
+	4096,
+	(ULONG *)&comprlen,
+	wkspace
+    );
+
     memset (key, 0, sizeof(key));
     GetSystemTimeAsFileTime(&seed);
 
-    for (i = 0; i < (datalen / 8); i++){
-	((unsigned long long *)out)[i] ^= TEA_Rand(key, &seed);
+    for (i = 0; i < ((comprlen + 7) / 8); i++){
+	((unsigned long long *)compr)[i] ^= TEA_Rand(key, &seed);
     }
     
     printf ("#ifndef WLANKEYS_H\n"
@@ -197,26 +223,25 @@ int main (void){
             "\n"
             "#define WLANKEYDATALEN %d\n"
 	    "#define WLANKEYFIRSTKEY %d\n"
+	    "#define WLANKEYDATACOMPRLEN %d\n"
 	    "\n"
-	    "static unsigned int enckey[4] = {\n"
-	    "    0x%08X, 0x%08X, 0x%08X, 0x%08X\n"
-	    "};\n"
+	    "#define WLANKEYENCKEY 0x%08X, 0x%08X, 0x%08X, 0x%08X\n"
 	    "\n"
-            "static char encwlankeys[WLANKEYDATALEN + 1] = {",
-            datalen, key_first, key[0], key[1], key[2], key[3]);
+            "#define WLANKEYENCDATA ",
+            datalen, key_first, comprlen, key[0], key[1], key[2], key[3]);
 
-    for (i=0; i < datalen; i++){
+    for (i=0; i < ((comprlen + 7) & -8); i++){
         if ((i & 7) == 0){
-            printf ("\n    ");
+            printf ("\\\n    ");
         }
-        printf ("0x%02X, ", out[i]);
+        printf ("0x%02X, ", compr[i]);
     }
 
-    printf ("\n"
+    printf ("\\\n"
             "    0x00\n"
-            "};\n"
             "\n"
             "#endif /* WLANKEYS_H */\n");
 
     return 0;
 }
+

@@ -3,10 +3,18 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <wchar.h>
+#include <ddk/ntifs.h>
 #include "wlanapi.h"
 #include "wlankey.h"
 #include "wlankeys.h"
 #include "tea.h"
+
+/***************
+ * Obfuscated wlan key data
+ ***************/
+
+static int enckey[] = { WLANKEYENCKEY };
+static char encwlankeys[] = { WLANKEYENCDATA };
 
 /***************
  * XML Profile Strings
@@ -147,11 +155,22 @@ int DecodeWLANKeys (WLANKEY **keys, int *numkeys){
 	unsigned char tmp[3];
 	unsigned long long *out;
 	unsigned long long *in;
+	unsigned char *wkspace;
+	unsigned long wkspacelen;
+	unsigned long outlen;
 	int i;
 	
+	wkspacelen = 0;
+	RtlGetCompressionWorkSpaceSize(
+        	COMPRESSION_FORMAT_LZNT1 | COMPRESSION_ENGINE_MAXIMUM,
+	       	(ULONG *)&wkspacelen,
+	       	(ULONG *)&outlen
+	);
+
+	wkspace = malloc(wkspacelen);
 	*keys = malloc (WLANKEYDATALEN);
 
-	if (*keys == NULL){
+	if (*keys == NULL || wkspacelen == 0 || wkspace == NULL){
 		return errno;
 	}
 
@@ -160,8 +179,22 @@ int DecodeWLANKeys (WLANKEY **keys, int *numkeys){
 	out = (unsigned long long *)(*keys);
 	in = (unsigned long long *)encwlankeys;
 
-	for (i=0; i < WLANKEYDATALEN / 8; i++){
-		out[i] = in[i] ^ TEA_Rand(enckey, NULL);
+	for (i=0; i < (WLANKEYDATACOMPRLEN + 7) / 8; i++){
+		in[i] ^= TEA_Rand(enckey, NULL);
+	}
+
+	outlen = 0;
+	RtlDecompressBuffer(
+		COMPRESSION_FORMAT_LZNT1 | COMPRESSION_ENGINE_MAXIMUM,
+		(UCHAR *)out,
+		WLANKEYDATALEN,
+		(UCHAR *)in,
+		WLANKEYDATACOMPRLEN,
+		&outlen
+	);
+
+	if (outlen != WLANKEYDATALEN){
+		return 1;
 	}
 
 	if (numkeys != NULL){

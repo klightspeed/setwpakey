@@ -1,4 +1,5 @@
 CC=gcc
+STRIP=strip
 AS=as
 DLLTOOL=dlltool
 WINDRES=windres
@@ -18,13 +19,16 @@ wlankeys.h: mkwlankeys.exe
 	$(WINE) ./$< >$@
 
 setwpakey.exe: setwpakey.o wlankey.o resource.o tea.o libwlanapi.a 
-	$(CC) -o $@ $+ -mconsole
+	$(CC) -o $@ $+ -mconsole -lntdll
+	$(STRIP) --strip-unneeded $@
 
 wpakeygui.exe: wpakeygui.o wlankey.o dialog.o tea.o libwlanapi.a
-	$(CC) -o $@ $+ -mwindows
+	$(CC) -o $@ $+ -mwindows -lntdll
+	$(STRIP) --strip-unneeded $@
 
 mkwlankeys.exe: mkwlankeys.o tea.o
-	$(CC) -o $@ $+ -lkernel32
+	$(CC) -o $@ $+ -lkernel32 -lntdll
+	$(STRIP) --strip-unneeded $@
 
 setwpakey.o: setwpakey.c wlankey.h tea.h
 

@@ -10,13 +10,13 @@
 void Usage(char *progname, WLANKEY *profiles){
     fprintf (stderr, 
             "Usage:\n"
-            "    %s --all\n"
+            "    %s [--clean] --all\n"
             "    %s [--clean] [--] {SSID} [{SSID} ...]\n"
             "\n"
             "    --all    Install all profiles\n"
             "    --clean  Remove all profiles\n"
-            "    {SSID}   SSID of profile to install\n"
-            "    --       All following arguments are SSIDs\n",
+            "    --       All following arguments are SSIDs\n"
+            "    {SSID}   SSID of profile to install\n",
             progname,
             progname
     );
@@ -112,6 +112,7 @@ int main (int argc, char **argv){
                     for (j = 0; ssids[j] != NULL; j++){
                         if (!stricmp(ssids[j], ssid)){
                             memcpy (keys + k, allkeys + i, sizeof(WLANKEY));
+			    printf ("Will install profile %s\n", ssid);
                             k++;
                             ssid[0] = 0;
                         }
