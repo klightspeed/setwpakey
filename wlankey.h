@@ -36,8 +36,8 @@ typedef struct {
 void XMLEntities (wchar_t *out, const wchar_t *in, const unsigned int outlen);
 int DecodeWLANKeys (WLANKEY **keys, int *numkeys);
 
-DWORD RemoveIfaceProfiles (HANDLE h, const GUID *iface);
-DWORD RemoveWlanProfiles ();
+DWORD RemoveIfaceProfiles (HANDLE h, const GUID *iface, const WLANKEY *profiles);
+DWORD RemoveWlanProfiles (const WLANKEY *profiles);
 
 DWORD SetIfaceProfile (HANDLE h,
                        const GUID *iface,

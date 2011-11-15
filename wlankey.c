@@ -114,7 +114,7 @@ static wchar_t *securityxmlpeapmschap =
 	L"        </EapType>\n";
 
 /*****************
- * Internal functions
+ * Utility functions
  *****************/
 
 /*
@@ -212,17 +212,25 @@ int DecodeWLANKeys (WLANKEY **keys, int *numkeys){
  * Remove all profiles on an interface
  */
 DWORD RemoveIfaceProfiles (HANDLE h, 
-			   const GUID *iface){
+			   const GUID *iface,
+			   const WLANKEY *profiles){
 	WLAN_PROFILE_INFO_LIST *profile_list = NULL;
 	DWORD status;
 	int i;
+	int j;
 
 	status = WlanGetProfileList(h, iface, NULL, &profile_list);
 	if (status == ERROR_SUCCESS && profile_list != NULL){
 		for (i = 0; status == ERROR_SUCCESS && i < profile_list->dwNumberOfItems; i++){
 			WLAN_PROFILE_INFO *profile = (WLAN_PROFILE_INFO *)(profile_list->ProfileInfo + i);
+			j = 0;
 			if (profile != NULL){
-				status = WlanDeleteProfile(h, iface, profile->strProfileName, NULL);
+				do {
+					if (profiles == NULL || !wcsicmp(profile->strProfileName, profiles[j].ssid)){
+						status = WlanDeleteProfile(h, iface, profile->strProfileName, NULL);
+						break;
+					}
+				} while (profiles != NULL && profiles[j].ssid[0] != 0);
 			}
 		}
 		WlanFreeMemory(profile_list);
@@ -234,7 +242,7 @@ DWORD RemoveIfaceProfiles (HANDLE h,
 /*
  * Removes existing profiles on all interfaces
  */
-DWORD RemoveWlanProfiles (){
+DWORD RemoveWlanProfiles (const WLANKEY *profiles){
 	DWORD apiver;
 	DWORD status;
 	HANDLE h;
@@ -249,7 +257,7 @@ DWORD RemoveWlanProfiles (){
 	status = WlanEnumInterfaces (h, NULL, &iflist);
 	for (i=0; status == ERROR_SUCCESS && i < iflist->dwNumberOfItems; i++){
 		iface = &(iflist->InterfaceInfo[i].InterfaceGuid);
-		status = RemoveIfaceProfiles (h, iface);
+		status = RemoveIfaceProfiles (h, iface, profiles);
 	}
 
 	WlanFreeMemory (iflist);

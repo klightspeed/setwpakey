@@ -10,11 +10,12 @@
 void Usage(char *progname, WLANKEY *profiles){
     fprintf (stderr, 
             "Usage:\n"
-            "    %s [--clean] --all\n"
-            "    %s [--clean] [--] {SSID} [{SSID} ...]\n"
+            "    %s [--clean|--cleanall] --all\n"
+            "    %s [--clean|--cleanall] [--] {SSID} [{SSID} ...]\n"
             "\n"
-            "    --all    Install all profiles\n"
-            "    --clean  Remove all profiles\n"
+            "    --all       Install all following listed profiles\n"
+            "    --clean     Remove following listed profiles\n"
+            "    --cleanall  Remove all profiles\n"
             "    --       All following arguments are SSIDs\n"
             "    {SSID}   SSID of profile to install\n",
             progname,
@@ -45,6 +46,7 @@ int main (int argc, char **argv){
     int i, j, k;
     int numkeys = 0;
     int clean_profiles = 0;
+    int clean_all_profiles = 0;
     int all_profiles = 0;
     int get_help = 0;
     int dashdash = 0;
@@ -63,6 +65,10 @@ int main (int argc, char **argv){
                     all_profiles = 1;
                 } else if (!strcmp(argv[i], "--clean")){
                     clean_profiles = 1;
+                    clean_all_profiles = 0;
+                } else if (!strcmp(argv[i], "--cleanall")){
+                    clean_profiles = 1;
+                    clean_all_profiles = 1;
                 } else {
                     get_help = 1;
                     break;
@@ -70,6 +76,9 @@ int main (int argc, char **argv){
             } else if (!strcmp(argv[i], "-a")){
                 all_profiles = 1;
             } else if (!strcmp(argv[i], "-c")){
+                if (clean_profiles){
+                    clean_all_profiles = 1;
+                }
                 clean_profiles = 1;
             } else {
                 get_help = 1;
@@ -112,7 +121,7 @@ int main (int argc, char **argv){
                     for (j = 0; ssids[j] != NULL; j++){
                         if (!stricmp(ssids[j], ssid)){
                             memcpy (keys + k, allkeys + i, sizeof(WLANKEY));
-			    printf ("Will install profile %s\n", ssid);
+                            printf ("Will install profile %s\n", ssid);
                             k++;
                             ssid[0] = 0;
                         }
@@ -124,9 +133,13 @@ int main (int argc, char **argv){
 
 #ifndef TEST
     if (status == ERROR_SUCCESS){
-	if (clean_profiles){
-	    RemoveWlanProfiles();
-	}
+        if (clean_profiles){
+            if (clean_all_profiles){
+                RemoveWlanProfiles(NULL);
+            } else {
+                RemoveWlanProfiles(allkeys);
+            }
+        }
         status = SetWlanProfiles (keys, &reason);
     }
     if (status != ERROR_SUCCESS){
