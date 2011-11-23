@@ -204,6 +204,44 @@ int DecodeWLANKeys (WLANKEY **keys, int *numkeys){
 	return ERROR_SUCCESS;
 }
 
+/*
+ * Get SSID from Profile XML
+ * Really quick and dirty
+ */
+DWORD GetProfileSSID (HANDLE h,
+		     const GUID *iface,
+		     const wchar_t *name,
+		     wchar_t *ssid){
+    wchar_t *_ssid, *_ssidend;
+    wchar_t *xml = NULL;
+    DWORD status;
+    DWORD flags = 0;
+    DWORD granted = 0;
+
+    status = WlanGetProfile(h, iface, name, NULL, &xml, &flags, &granted);
+
+    if (status == ERROR_SUCCESS){
+	status = ERROR_INVALID_DATA;
+	_ssid = wcsstr(xml, L"<SSID>");
+	if (_ssid){
+	    _ssid = wcsstr(_ssid, L"<name>");
+	    if (_ssid){
+		_ssid = _ssid + wcslen(L"<name>");
+	        _ssidend = wcsstr(_ssid, L"</name>");
+		if (_ssidend){
+	            *_ssidend = 0;
+		    wcscpy (ssid, _ssid);
+		    status = ERROR_SUCCESS;
+		}
+	    }
+	}
+	WlanFreeMemory(xml);
+	xml = NULL;
+    }
+
+    return status;
+}
+
 /*****************
  * Profile removal functions
  *****************/
@@ -223,14 +261,18 @@ DWORD RemoveIfaceProfiles (HANDLE h,
 	if (status == ERROR_SUCCESS && profile_list != NULL){
 		for (i = 0; status == ERROR_SUCCESS && i < profile_list->dwNumberOfItems; i++){
 			WLAN_PROFILE_INFO *profile = (WLAN_PROFILE_INFO *)(profile_list->ProfileInfo + i);
+			wchar_t ssid[256];
+			GetProfileSSID(h, iface, profile->strProfileName, ssid);
+
 			j = 0;
 			if (profile != NULL){
 				do {
-					if (profiles == NULL || !wcsicmp(profile->strProfileName, profiles[j].ssid)){
-						status = WlanDeleteProfile(h, iface, profile->strProfileName, NULL);
+					if (profiles == NULL || !wcsicmp(ssid, profiles[j].ssid)){
+						status = WlanDeleteProfile(h, iface, ssid, NULL);
+						fwprintf (stderr, L"    Removed profile \"%ls\"\n", profile->strProfileName);
 						break;
 					}
-				} while (profiles != NULL && profiles[j].ssid[0] != 0);
+				} while (profiles != NULL && profiles[++j].ssid[0] != 0);
 			}
 		}
 		WlanFreeMemory(profile_list);
@@ -283,15 +325,17 @@ DWORD SetIfaceProfile (HANDLE h,
 	static wchar_t rootcaxml[65536];
 	static wchar_t tmp[65];
 	static wchar_t ssid[512];
+	static wchar_t name[512];
 	static wchar_t auth[512];
 	static wchar_t enc[512];
 	static wchar_t psk[512];
 	static unsigned char zeroca[20] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	int i, j;
-	fwprintf (stderr, L"    Creating profile for SSID %s\n", key->ssid);
+	fwprintf (stderr, L"    Creating profile for %s\n", key->displayname);
 	XMLEntities (ssid, key->ssid, 512);
 	XMLEntities (auth, key->auth, 512);
 	XMLEntities (enc, key->enc, 512);
+	XMLEntities (name, key->displayname, 512);
 	securityxml[0] = securityxml[65535] = 0;
 	profilexml[0] = profilexml[65535] = 0;
 	onexconfigxml[0] = onexconfigxml[65535] = 0;
@@ -344,7 +388,7 @@ DWORD SetIfaceProfile (HANDLE h,
 	_snwprintf (profilexml, 
 	            65535, 
 	            profilexmltpl,
-	            ssid, 
+	            name, 
 	            ssid, 
 	            auth, 
 	            enc, 

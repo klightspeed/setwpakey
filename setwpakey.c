@@ -121,8 +121,7 @@ int main (int argc, char **argv){
                     for (j = 0; ssids[j] != NULL; j++){
                         if (!stricmp(ssids[j], ssid)){
                             memcpy (keys + k, allkeys + i, sizeof(WLANKEY));
-                            printf ("Will install profile %s\n", ssid);
-                            k++;
+			    k++;
                             ssid[0] = 0;
                         }
                     }
