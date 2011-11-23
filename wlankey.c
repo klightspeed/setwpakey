@@ -268,8 +268,8 @@ DWORD RemoveIfaceProfiles (HANDLE h,
 			if (profile != NULL){
 				do {
 					if (profiles == NULL || !wcsicmp(ssid, profiles[j].ssid)){
-						status = WlanDeleteProfile(h, iface, ssid, NULL);
-						fwprintf (stderr, L"    Removed profile \"%ls\"\n", profile->strProfileName);
+						status = WlanDeleteProfile(h, iface, profile->strProfileName, NULL);
+						fwprintf (stderr, L"    Removing profile \"%ls\"\n", profile->strProfileName);
 						break;
 					}
 				} while (profiles != NULL && profiles[++j].ssid[0] != 0);
