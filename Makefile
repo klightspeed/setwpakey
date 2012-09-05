@@ -7,7 +7,7 @@ WINE=
 
 .PHONY: all test clean distclean
 
-all: setwpakey.exe wpakeygui.exe
+all: setwpakey.exe wpakeygui.exe autowpakey.exe
 
 clean:
 	rm -f *.o *.a *~ mkwlankeys.exe wlankeys.h
