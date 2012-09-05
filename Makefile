@@ -26,6 +26,10 @@ wpakeygui.exe: wpakeygui.o wlankey.o dialog.o tea.o libwlanapi.a
 	$(CC) -o $@ $+ -mwindows -lntdll
 	$(STRIP) --strip-unneeded $@
 
+autowpakey.exe: autowpakey.o wlankey.o resource.o tea.o libwlanapi.a
+	$(CC) -o $@ $+ -mconsole -lntdll
+	$(STRIP) --strip-unneeded $@
+
 mkwlankeys.exe: mkwlankeys.o tea.o
 	$(CC) -o $@ $+ -lkernel32 -lntdll
 	$(STRIP) --strip-unneeded $@
@@ -33,6 +37,8 @@ mkwlankeys.exe: mkwlankeys.o tea.o
 setwpakey.o: setwpakey.c wlankey.h tea.h
 
 wpakeygui.o: wpakeygui.c wlankey.h tea.h
+
+autowpakey.o: autowpakey.c wlankey.h tea.h
 
 wlankey.o: wlankeys.h wlankey.h tea.h
 
