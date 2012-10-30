@@ -409,6 +409,7 @@ DWORD SetIfaceProfiles (HANDLE h,
 	DWORD status;
 	WLAN_PROFILE_INFO_LIST *curprofiles;
 	int end_index = 0;
+	int start_index = 0;
 	int i;
 	
 	status = WlanGetProfileList(h, iface, NULL, &curprofiles);
@@ -418,21 +419,32 @@ DWORD SetIfaceProfiles (HANDLE h,
 	fwprintf (stderr, L"Creating profiles on interface \"%s\"\n", ifname);
 	status = errno;
 	while (keys->ssid[0] != 0){
+		wchar_t *profilename;
+		int index;
+		if ((GetVersion() & 0xFF) >= 0x06){ // Windows Vista and above
+			profilename = keys->displayname;
+		} else {
+			profilename = keys->ssid;
+		}
+
 		status = SetIfaceProfile (h, iface, keys, reason);
 		if (status != ERROR_SUCCESS){
 			return status;
 		}
-		if (!keys->preferred){
-			wchar_t *profilename;
-			if ((GetVersion() & 0xFF) >= 0x06){ // Windows Vista and above
-				profilename = keys->displayname;
-			} else {
-				profilename = keys->ssid;
-			}
-			WlanSetProfilePosition(h, iface, profilename, end_index, NULL);
+
+		if (keys->preferred){
+			index = start_index;
 		} else {
-			end_index++;
+			index = end_index;
 		}
+
+		WlanSetProfilePosition(h, iface, profilename, index, NULL);
+
+		if (keys->preferred){
+			start_index++;
+		}
+
+		end_index++;
 		keys++;
 	}
 	fwprintf (stderr, L"Profiles created on interface \"%s\"\n", ifname);
