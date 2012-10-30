@@ -11,8 +11,9 @@ typedef struct {
     wchar_t ssid[33];
     wchar_t auth[16];
     wchar_t enc[16];
-    int nonbcast;
-    int useonex;
+    int nonbcast:1;
+    int useonex:1;
+    int preferred:1;
     union {
 	wchar_t psk[65];
 	struct {
@@ -41,7 +42,6 @@ DWORD RemoveWlanProfiles (const WLANKEY *profiles);
 
 DWORD SetIfaceProfile (HANDLE h,
                        const GUID *iface,
-		       const wchar_t *ifname,
                        WLANKEY *key,
                        WLAN_REASON_CODE *reason);
 DWORD SetIfaceProfiles (HANDLE h,

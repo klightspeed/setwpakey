@@ -87,6 +87,8 @@ int main (void){
         memset (wlankey, 0, sizeof(WLANKEY));
 	GetPrivateProfileStringW (ssid, L"SSID", ssid, wlankey->ssid, 64, inipath);
 	GetPrivateProfileStringW (ssid, L"DisplayName", ssid, wlankey->displayname, 64, inipath);
+	GetPrivateProfileStringW (ssid, L"Preferred", L"true", tmp, 64, inipath);
+	wlankey->preferred = wcsicmp(tmp, L"true") == 0;
 	GetPrivateProfileStringW (ssid, L"Auth", L"WPA2PSK", wlankey->auth, 16, inipath);
 	GetPrivateProfileStringW (ssid, L"Enc", L"AES", wlankey->enc, 16, inipath);
 	GetPrivateProfileStringW (ssid, L"Weight", L"0", tmp, 16, inipath);

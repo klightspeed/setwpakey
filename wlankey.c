@@ -30,7 +30,7 @@ static wchar_t *profilexmltpl =
 	L" </SSIDConfig>\n"
 	L" <connectionType>ESS</connectionType>\n"
 	L" <connectionMode>auto</connectionMode>\n"
-	L" <autoSwitch>true</autoSwitch>\n"
+	L" <autoSwitch>%ls</autoSwitch>\n"
 	L" <MSM>\n"
 	L"  <security>\n"
 	L"   <authEncryption>\n"
@@ -316,7 +316,6 @@ DWORD RemoveWlanProfiles (const WLANKEY *profiles){
  */
 DWORD SetIfaceProfile (HANDLE h,
                        const GUID *iface,
-                       const wchar_t *ifname,
                        WLANKEY *key,
                        WLAN_REASON_CODE *reason){
 	static wchar_t profilexml[65536];
@@ -331,6 +330,7 @@ DWORD SetIfaceProfile (HANDLE h,
 	static wchar_t psk[512];
 	static unsigned char zeroca[20] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	int i, j;
+	DWORD status;
 	fwprintf (stderr, L"    Creating profile for %s\n", key->displayname);
 	XMLEntities (ssid, key->ssid, 512);
 	XMLEntities (auth, key->auth, 512);
@@ -390,6 +390,7 @@ DWORD SetIfaceProfile (HANDLE h,
 	            profilexmltpl,
 	            name, 
 	            ssid, 
+		    key->preferred ? L"false" : L"true",
 	            auth, 
 	            enc, 
 	            key->useonex ? L"true" : L"false",
@@ -406,13 +407,31 @@ DWORD SetIfaceProfiles (HANDLE h,
                         WLANKEY *keys,
                         WLAN_REASON_CODE *reason){
 	DWORD status;
+	WLAN_PROFILE_INFO_LIST *curprofiles;
+	int end_index = 0;
 	int i;
+	
+	status = WlanGetProfileList(h, iface, NULL, &curprofiles);
+	if (status == ERROR_SUCCESS){
+		end_index = curprofiles->dwNumberOfItems;
+	}
 	fwprintf (stderr, L"Creating profiles on interface \"%s\"\n", ifname);
 	status = errno;
 	while (keys->ssid[0] != 0){
-		status = SetIfaceProfile (h, iface, ifname, keys, reason);
+		status = SetIfaceProfile (h, iface, keys, reason);
 		if (status != ERROR_SUCCESS){
 			return status;
+		}
+		if (!keys->preferred){
+			wchar_t *profilename;
+			if ((GetVersion() & 0xFF) >= 0x06){ // Windows Vista and above
+				profilename = keys->displayname;
+			} else {
+				profilename = keys->ssid;
+			}
+			WlanSetProfilePosition(h, iface, profilename, end_index, NULL);
+		} else {
+			end_index++;
 		}
 		keys++;
 	}
