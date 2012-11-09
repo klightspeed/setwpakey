@@ -162,9 +162,9 @@ int DecodeWLANKeys (WLANKEY **keys, int *numkeys){
 	
 	wkspacelen = 0;
 	RtlGetCompressionWorkSpaceSize(
-        	COMPRESSION_FORMAT_LZNT1 | COMPRESSION_ENGINE_MAXIMUM,
-	       	(ULONG *)&wkspacelen,
-	       	(ULONG *)&outlen
+		COMPRESSION_FORMAT_LZNT1 | COMPRESSION_ENGINE_MAXIMUM,
+		(ULONG *)&wkspacelen,
+		(ULONG *)&outlen
 	);
 
 	wkspace = malloc(wkspacelen);
@@ -209,37 +209,37 @@ int DecodeWLANKeys (WLANKEY **keys, int *numkeys){
  * Really quick and dirty
  */
 DWORD GetProfileSSID (HANDLE h,
-		     const GUID *iface,
-		     const wchar_t *name,
-		     wchar_t *ssid){
-    wchar_t *_ssid, *_ssidend;
-    wchar_t *xml = NULL;
-    DWORD status;
-    DWORD flags = 0;
-    DWORD granted = 0;
+                      const GUID *iface,
+                      const wchar_t *name,
+                      wchar_t *ssid){
+	wchar_t *_ssid, *_ssidend;
+	wchar_t *xml = NULL;
+	DWORD status;
+	DWORD flags = 0;
+	DWORD granted = 0;
 
-    status = WlanGetProfile(h, iface, name, NULL, &xml, &flags, &granted);
+	status = WlanGetProfile(h, iface, name, NULL, &xml, &flags, &granted);
 
-    if (status == ERROR_SUCCESS){
-	status = ERROR_INVALID_DATA;
-	_ssid = wcsstr(xml, L"<SSID>");
-	if (_ssid){
-	    _ssid = wcsstr(_ssid, L"<name>");
-	    if (_ssid){
-		_ssid = _ssid + wcslen(L"<name>");
-	        _ssidend = wcsstr(_ssid, L"</name>");
-		if (_ssidend){
-	            *_ssidend = 0;
-		    wcscpy (ssid, _ssid);
-		    status = ERROR_SUCCESS;
+	if (status == ERROR_SUCCESS){
+		status = ERROR_INVALID_DATA;
+		_ssid = wcsstr(xml, L"<SSID>");
+		if (_ssid){
+			_ssid = wcsstr(_ssid, L"<name>");
+			if (_ssid){
+				_ssid = _ssid + wcslen(L"<name>");
+				_ssidend = wcsstr(_ssid, L"</name>");
+				if (_ssidend){
+					*_ssidend = 0;
+					wcscpy (ssid, _ssid);
+					status = ERROR_SUCCESS;
+				}
+			}
 		}
-	    }
+		WlanFreeMemory(xml);
+		xml = NULL;
 	}
-	WlanFreeMemory(xml);
-	xml = NULL;
-    }
 
-    return status;
+	return status;
 }
 
 /*****************
@@ -250,24 +250,46 @@ DWORD GetProfileSSID (HANDLE h,
  * Remove all profiles on an interface
  */
 DWORD RemoveIfaceProfiles (HANDLE h, 
-			   const GUID *iface,
-			   const WLANKEY *profiles){
+                           const GUID *iface,
+                           const WLANKEY *profiles,
+                           const WLANKEY *keep){
 	WLAN_PROFILE_INFO_LIST *profile_list = NULL;
 	DWORD status;
 	int i;
 	int j;
+	int k;
 
 	status = WlanGetProfileList(h, iface, NULL, &profile_list);
 	if (status == ERROR_SUCCESS && profile_list != NULL){
 		for (i = 0; status == ERROR_SUCCESS && i < profile_list->dwNumberOfItems; i++){
 			WLAN_PROFILE_INFO *profile = (WLAN_PROFILE_INFO *)(profile_list->ProfileInfo + i);
-			wchar_t ssid[256];
-			GetProfileSSID(h, iface, profile->strProfileName, ssid);
-
-			j = 0;
 			if (profile != NULL){
+				wchar_t ssid[256];
+				GetProfileSSID(h, iface, profile->strProfileName, ssid);
+
+				if (keep != NULL){
+					int keep_profile = 0;
+					for (j = 0; keep[j].ssid[0] != 0; j++){
+						const wchar_t *profilename;
+						if ((GetVersion() & 0xFF) >= 0x06){ // Windows Vista and above
+							profilename = keep[j].displayname;
+						} else {
+							profilename = keep[j].ssid;
+						}
+
+						if (!wcscmp(profile->strProfileName, profilename)){
+							keep_profile = 1;
+							break;
+						}
+					}
+					if (keep_profile){
+						continue;
+					}
+				}
+
+				j = 0;
 				do {
-					if (profiles == NULL || !wcsicmp(ssid, profiles[j].ssid)){
+					if (profiles == NULL || !wcscmp(ssid, profiles[j].ssid)){
 						status = WlanDeleteProfile(h, iface, profile->strProfileName, NULL);
 						fwprintf (stderr, L"    Removing profile \"%ls\"\n", profile->strProfileName);
 						break;
@@ -275,6 +297,7 @@ DWORD RemoveIfaceProfiles (HANDLE h,
 				} while (profiles != NULL && profiles[++j].ssid[0] != 0);
 			}
 		}
+
 		WlanFreeMemory(profile_list);
 	}
 
@@ -284,7 +307,8 @@ DWORD RemoveIfaceProfiles (HANDLE h,
 /*
  * Removes existing profiles on all interfaces
  */
-DWORD RemoveWlanProfiles (const WLANKEY *profiles){
+DWORD RemoveWlanProfiles (const WLANKEY *profiles,
+                          const WLANKEY *keep){
 	DWORD apiver;
 	DWORD status;
 	HANDLE h;
@@ -299,7 +323,7 @@ DWORD RemoveWlanProfiles (const WLANKEY *profiles){
 	status = WlanEnumInterfaces (h, NULL, &iflist);
 	for (i=0; status == ERROR_SUCCESS && i < iflist->dwNumberOfItems; i++){
 		iface = &(iflist->InterfaceInfo[i].InterfaceGuid);
-		status = RemoveIfaceProfiles (h, iface, profiles);
+		status = RemoveIfaceProfiles (h, iface, profiles, keep);
 	}
 
 	WlanFreeMemory (iflist);
@@ -317,6 +341,7 @@ DWORD RemoveWlanProfiles (const WLANKEY *profiles){
 DWORD SetIfaceProfile (HANDLE h,
                        const GUID *iface,
                        WLANKEY *key,
+                       BOOL replace,
                        WLAN_REASON_CODE *reason){
 	static wchar_t profilexml[65536];
 	static wchar_t securityxml[65536];
@@ -390,12 +415,18 @@ DWORD SetIfaceProfile (HANDLE h,
 	            profilexmltpl,
 	            name, 
 	            ssid, 
-		    key->preferred ? L"false" : L"true",
+	            key->preferred ? L"false" : L"true",
 	            auth, 
 	            enc, 
 	            key->useonex ? L"true" : L"false",
 	            securityxml);
-	return WlanSetProfile (h, iface, 0, profilexml, NULL, TRUE, NULL, reason);
+	status = WlanSetProfile (h, iface, 0, profilexml, NULL, replace, NULL, reason);
+	if (status == ERROR_ALREADY_EXISTS){
+		fwprintf (stderr, L"      Profile %s already exists\n", key->displayname);
+		return ERROR_SUCCESS;
+	} else {
+		return status;
+	}
 }
 
 /*
@@ -405,6 +436,7 @@ DWORD SetIfaceProfiles (HANDLE h,
                         const GUID *iface,
                         const wchar_t *ifname,
                         WLANKEY *keys,
+                        BOOL replace,
                         WLAN_REASON_CODE *reason){
 	DWORD status;
 	WLAN_PROFILE_INFO_LIST *curprofiles;
@@ -427,7 +459,7 @@ DWORD SetIfaceProfiles (HANDLE h,
 			profilename = keys->ssid;
 		}
 
-		status = SetIfaceProfile (h, iface, keys, reason);
+		status = SetIfaceProfile (h, iface, keys, replace, reason);
 		if (status != ERROR_SUCCESS){
 			return status;
 		}
@@ -455,6 +487,7 @@ DWORD SetIfaceProfiles (HANDLE h,
  * Set the keys for SSIDS on all interfaces
  */
 DWORD SetWlanProfiles (WLANKEY *keys,
+                       BOOL replace,
                        WLAN_REASON_CODE *reason){
 	DWORD apiver;
 	DWORD status;
@@ -471,7 +504,7 @@ DWORD SetWlanProfiles (WLANKEY *keys,
 	for (i=0; status == ERROR_SUCCESS && i < iflist->dwNumberOfItems; i++){
 		iface = &(iflist->InterfaceInfo[i].InterfaceGuid);
 		ifname = iflist->InterfaceInfo[i].strInterfaceDescription;
-		status = SetIfaceProfiles (h, iface, ifname, keys, reason);
+		status = SetIfaceProfiles (h, iface, ifname, keys, replace, reason);
 	}
 	WlanFreeMemory (iflist);
 	WlanCloseHandle (h, NULL);

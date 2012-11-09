@@ -5,17 +5,14 @@ DLLTOOL=dlltool
 WINDRES=windres
 WINE=
 
-.PHONY: all test clean distclean
+.PHONY: all test clean
 
-all: setwpakey.exe wpakeygui.exe autowpakey.exe
+all: setwpakey.exe wpakeygui.exe autowpakey.exe getwpaconf.exe
 
 clean:
-	rm -f *.o *.a *~ mkwlankeys.exe wlankeys.h
-
-distclean:
 	rm -f *.o *.a *~ .*.sw? *.exe wlankeys.h
 
-wlankeys.h: mkwlankeys.exe
+wlankeys.h: mkwlankeys.exe wlankeys.ini
 	$(WINE) ./$< >$@
 
 setwpakey.exe: setwpakey.o wlankey.o resource.o tea.o libwlanapi.a 
@@ -38,17 +35,17 @@ getwpaconf.exe: getwpaconf.o libwlanapi.a
 	$(CC) -o $@ $+ -mconsole -lntdll
 	$(STRIP) --strip-unneeded $@
 
-setwpakey.o: setwpakey.c wlankey.h tea.h
+setwpakey.o: wlankey.h tea.h
 
-wpakeygui.o: wpakeygui.c wlankey.h tea.h
+wpakeygui.o: wlankey.h tea.h
 
-autowpakey.o: autowpakey.c wlankey.h tea.h
+autowpakey.o: wlankey.h tea.h
 
 wlankey.o: wlankeys.h wlankey.h tea.h
 
-mkwlankeys.o: mkwlankeys.c wlankey.h tea.h wlankeys.ini
+mkwlankeys.o: wlankey.h tea.h
 
-tea.o: tea.c tea.h
+tea.o: tea.h
 
 resource.o: resource.rc
 	$(WINDRES) -o $@ $+

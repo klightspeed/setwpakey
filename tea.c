@@ -6,11 +6,11 @@ static void TEA_Round (unsigned int *v, unsigned int* k) {
 	for (i=0; i < 32; i++){
 		sum += 0x9e3779b9;
 		v[0] += ((v[1] << 4) + k[0]) ^
-				(v[1] + sum) ^
-				((v[1] >> 5) + k[1]);
+		        (v[1] + sum) ^
+		        ((v[1] >> 5) + k[1]);
 		v[1] += ((v[0] << 4) + k[2]) ^
-				(v[0] + sum) ^
-				((v[1] >> 5) + k[1]);
+		        (v[0] + sum) ^
+		        ((v[1] >> 5) + k[1]);
 	}
 }
 

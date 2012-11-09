@@ -1,2 +1,2 @@
-#define IDI_SETWPAKEY			107
+#define IDI_SETWPAKEY 107
 
