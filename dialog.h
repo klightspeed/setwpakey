@@ -9,5 +9,7 @@
 #define IDD_WPASELECT 100
 #define IDC_WPASELECT 101
 #define IDC_ADDNET    102
+#define IDC_DELNET    103
+#define IDC_DELALL    104
 
 #endif

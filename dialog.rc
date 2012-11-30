@@ -2,13 +2,19 @@
 
 IDI_SETWPAKEY       ICON         "setwpakey.ico"
 
-IDD_WPASELECT DIALOGEX 0, 0, 260, 50
+IDD_WPASELECT DIALOGEX 0, 0, 260, 100
 STYLE DS_3DLOOK | WS_MINIMIZEBOX | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | DS_SETFONT | DS_FIXEDSYS | DS_CENTER
 CAPTION "Select School WPA Key"
 FONT 10, "MS Shell Dlg"
 BEGIN
-	LTEXT "Please select the school at which you will need to connect\nto the wireless network", IDC_STATIC, 10, 10, 420, 20
+	LTEXT "Please select the school at which you will need to connect to the wireless network", IDC_STATIC, 10, 10, 240, 20
 	COMBOBOX IDC_WPASELECT, 10, 30, 180, 200, CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP
 	DEFPUSHBUTTON "Add Network", IDC_ADDNET, 200, 30, 50, 13
+	PUSHBUTTON "Remove School Profiles", IDC_DELNET, 10, 60, 100, 13
+	LTEXT "<--", IDC_STATIC, 115, 60, 15, 10
+	LTEXT "Click to remove all school wireless profiles", IDC_STATIC, 130, 57, 120, 20
+	PUSHBUTTON "Remove All Profiles", IDC_DELALL, 10, 80, 100, 13
+	LTEXT "<--", IDC_STATIC, 115, 80, 15, 10
+	LTEXT "Click to remove ALL wireless profiles", IDC_STATIC, 130, 77, 120, 20
 END
 

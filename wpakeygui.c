@@ -15,16 +15,18 @@ static int numkeys;
 static void WPASelect_DialogInit(HWND hWnd){
 	int index;
 	int i, j;
-	char name[257];
+	//wchar_t name[257];
 	WLAN_REASON_CODE reason;
 	HWND hCtl = GetDlgItem (hWnd, IDC_WPASELECT);
 	
 	for (i = 0; keys[i].ssid[0] != 0; i++){
+		/*
 		for (j = 0; keys[i].displayname[j] != 0; j++){
 			name[j] = keys[i].displayname[j];
 		}
 		name[j] = 0;
-		SendMessageA (hCtl, CB_ADDSTRING, 0, (LPARAM)name);
+		 */
+		SendMessageW (hCtl, CB_ADDSTRING, 0, (LPARAM)(keys[i].displayname));
 	}
 	
 	GetWlanAvailableSSID(keys, &index, &reason);
@@ -47,14 +49,24 @@ static void WPASelect_DialogCommand(HWND hWnd, WORD control_id, WORD command){
 				status = SetWlanProfiles(key, TRUE, &reason);
 				ReorderWlanProfiles(keys);
 				if (status != ERROR_SUCCESS){
-					char msgbuf[64];
-					snprintf (msgbuf, sizeof(msgbuf), "Error %08X; Reason %08X", status, reason);
-					MessageBoxA(hWnd, msgbuf, "Error adding WLAN profile", MB_OK | MB_ICONERROR);
+					wchar_t msgbuf[64];
+					snwprintf (msgbuf, sizeof(msgbuf), L"Error %08X; Reason %08X", status, reason);
+					MessageBoxW(hWnd, msgbuf, L"Error adding WLAN profile", MB_OK | MB_ICONERROR);
 				} else {
-					char msgbuf[512];
-					snprintf (msgbuf, sizeof(msgbuf), "Successfully added profile %ls [%ls]", key->displayname, key->ssid);
-					MessageBoxA(hWnd, msgbuf, "Successfully added WLAN profile", MB_OK | MB_ICONINFORMATION);
+					wchar_t msgbuf[512];
+					snwprintf (msgbuf, sizeof(msgbuf), L"Successfully added profile %ls [%ls]", key->displayname, key->ssid);
+					MessageBoxW(hWnd, msgbuf, L"Successfully added WLAN profile", MB_OK | MB_ICONINFORMATION);
 				}
+			}
+		} else if (control_id == IDC_DELNET){
+			int clicked = MessageBoxW(hWnd, L"Are you sure you want to remove all school wireless profiles?\nDoing so will disconnect you from the school wireless network.", L"Are you sure", MB_YESNO | MB_ICONWARNING);
+			if (clicked == IDYES){
+				RemoveWlanProfiles(keys, NULL);
+			}
+		} else if (control_id == IDC_DELALL){
+			int clicked = MessageBoxW(hWnd, L"Are you sure you want to remove ALL wireless profiles?\nDoing so will disconnect you from the school wireless network.", L"Are you sure", MB_YESNO | MB_ICONWARNING);
+			if (clicked == IDYES){
+				RemoveWlanProfiles(NULL, NULL);
 			}
 		}
 	}
@@ -85,7 +97,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	MSG msg;
 	HWND hDlg;
 
-	fprintf (stderr, "Entering WinMain\n");
 	status = DecodeWLANKeys (&keys, &numkeys);
 	hDlg = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_WPASELECT), NULL, WPASelect_DialogProc);
 
@@ -95,7 +106,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			DispatchMessage(&msg);
 		}
 	}
-	fprintf (stderr, "Exiting WinMain\n");
 	return msg.wParam;    
 }
 
