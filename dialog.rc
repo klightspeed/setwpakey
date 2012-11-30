@@ -8,7 +8,7 @@ CAPTION "Select School WPA Key"
 FONT 10, "MS Shell Dlg"
 BEGIN
 	LTEXT "Please select the school at which you will need to connect to the wireless network", IDC_STATIC, 10, 10, 240, 20
-	COMBOBOX IDC_WPASELECT, 10, 30, 180, 200, CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP
+	COMBOBOX IDC_WPASELECT, 10, 30, 180, 200, CBS_DROPDOWN|WS_VSCROLL|WS_TABSTOP
 	DEFPUSHBUTTON "Add Network", IDC_ADDNET, 200, 30, 50, 13
 	PUSHBUTTON "Remove School Profiles", IDC_DELNET, 10, 60, 100, 13
 	LTEXT "<--", IDC_STATIC, 115, 60, 15, 10

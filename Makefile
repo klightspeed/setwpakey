@@ -37,7 +37,7 @@ getwpaconf.exe: getwpaconf.o libwlanapi.a
 
 setwpakey.o: wlankey.h tea.h
 
-wpakeygui.o: wlankey.h tea.h
+wpakeygui.o: wlankey.h tea.h dialog.h
 
 autowpakey.o: wlankey.h tea.h
 
