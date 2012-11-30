@@ -24,7 +24,6 @@ static WCHAR DoAutoComplete(HWND hWnd, WCHAR ch){
 	static WCHAR toFind[256];
 	int index = 0;
 
-	fwprintf (stderr, L"WM_CHAR %d\n", ch);
 	if (ch == VK_BACK){
 		index = ComboBox_GetCurSel(hWnd);
 		int bs = LOWORD(ComboBox_GetEditSel(hWnd)) - 1;
@@ -43,7 +42,6 @@ static WCHAR DoAutoComplete(HWND hWnd, WCHAR ch){
 		if (index == CB_ERR){
 			MessageBeep(0xFFFFFFFF);
 		} else {
-			fwprintf (stderr, L"\"%s\" => %d (%s)\n", toFind, index, keys[index].displayname);
 			ComboBox_SetCurSel(hWnd, index);
 			ComboBox_SetEditSel(hWnd, wcslen(toFind), -1);
 		}
@@ -115,7 +113,6 @@ static void WPASelect_DialogInit(HWND hWnd){
 static void WPASelect_DialogCommand(HWND hWnd, WORD control_id, WORD command){
 	WLAN_REASON_CODE reason;
 	int status;
-	fwprintf (stderr, L"Dialog Command %04X on control %04X\n", command, control_id);
 	fflush(stderr);
 	if (command == BN_CLICKED){
 		if (control_id == IDC_ADDNET){
