@@ -39,6 +39,7 @@ int main (void) {
 		memset (key, 0, sizeof(WLANKEY) * 2);
 		memcpy (key, keys + index, sizeof(WLANKEY));
 		status = SetWlanProfiles(key, FALSE, &reason);
+		ReorderWlanProfiles(keys);
 		if (status != ERROR_SUCCESS){
 			fwprintf (stderr, L"Error adding wireless profile\n");
 			fwprintf (stderr, L"Status: 0x%08X\n", status);

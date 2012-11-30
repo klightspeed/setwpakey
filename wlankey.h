@@ -14,6 +14,7 @@ typedef struct {
 	int nonbcast:1;
 	int useonex:1;
 	int preferred:1;
+	int autoconnect:1;
 	union {
 		wchar_t psk[65];
 		struct {
@@ -59,10 +60,19 @@ DWORD SetWlanProfiles (WLANKEY *keys,
                        BOOL replace,
                        WLAN_REASON_CODE *reason);
 
+DWORD ReorderIfaceProfiles (HANDLE h,
+		            const GUID *iface,
+			    const wchar_t *ifname,
+			    WLANKEY *keys);
+DWORD ReorderWlanProfiles (WLANKEY *keys);
+
 DWORD GetIfaceAvailableSSID (HANDLE h,
                              const GUID *iface,
                              const wchar_t *ifname,
                              WLANKEY *keys,
                              int *index,
                              WLAN_REASON_CODE *reason);
+DWORD GetWlanAvailableSSID (WLANKEY *keys,
+                            int *index,
+                            WLAN_REASON_CODE *reason);
 #endif /* WLANKEY_H */

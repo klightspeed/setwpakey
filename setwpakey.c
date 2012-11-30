@@ -146,6 +146,7 @@ int main (int argc, char **argv){
 			}
 		}
 		status = SetWlanProfiles (keys, replace, &reason);
+		ReorderWlanProfiles(allkeys);
 	}
 	if (status != ERROR_SUCCESS){
 		_wperror (L"Error");

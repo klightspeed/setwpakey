@@ -29,7 +29,7 @@ static wchar_t *profilexmltpl =
 	L"  </SSID>\n"
 	L" </SSIDConfig>\n"
 	L" <connectionType>ESS</connectionType>\n"
-	L" <connectionMode>auto</connectionMode>\n"
+	L" <connectionMode>%ls</connectionMode>\n"
 	L" <autoSwitch>%ls</autoSwitch>\n"
 	L" <MSM>\n"
 	L"  <security>\n"
@@ -414,7 +414,8 @@ DWORD SetIfaceProfile (HANDLE h,
 	            65535, 
 	            profilexmltpl,
 	            name, 
-	            ssid, 
+	            ssid,
+		    key->autoconnect ? L"auto" : L"manual",
 	            key->preferred ? L"false" : L"true",
 	            auth, 
 	            enc, 
@@ -439,44 +440,16 @@ DWORD SetIfaceProfiles (HANDLE h,
                         BOOL replace,
                         WLAN_REASON_CODE *reason){
 	DWORD status;
-	WLAN_PROFILE_INFO_LIST *curprofiles;
-	int end_index = 0;
-	int start_index = 0;
 	int i;
 	
-	status = WlanGetProfileList(h, iface, NULL, &curprofiles);
-	if (status == ERROR_SUCCESS){
-		end_index = curprofiles->dwNumberOfItems;
-	}
 	fwprintf (stderr, L"Creating profiles on interface \"%s\"\n", ifname);
 	status = errno;
 	while (keys->ssid[0] != 0){
-		wchar_t *profilename;
-		int index;
-		if ((GetVersion() & 0xFF) >= 0x06){ // Windows Vista and above
-			profilename = keys->displayname;
-		} else {
-			profilename = keys->ssid;
-		}
-
 		status = SetIfaceProfile (h, iface, keys, replace, reason);
 		if (status != ERROR_SUCCESS){
 			return status;
 		}
 
-		if (keys->preferred){
-			index = start_index;
-		} else {
-			index = end_index;
-		}
-
-		WlanSetProfilePosition(h, iface, profilename, index, NULL);
-
-		if (keys->preferred){
-			start_index++;
-		}
-
-		end_index++;
 		keys++;
 	}
 	fwprintf (stderr, L"Profiles created on interface \"%s\"\n", ifname);
@@ -505,6 +478,107 @@ DWORD SetWlanProfiles (WLANKEY *keys,
 		iface = &(iflist->InterfaceInfo[i].InterfaceGuid);
 		ifname = iflist->InterfaceInfo[i].strInterfaceDescription;
 		status = SetIfaceProfiles (h, iface, ifname, keys, replace, reason);
+	}
+	WlanFreeMemory (iflist);
+	WlanCloseHandle (h, NULL);
+	return status;
+}
+
+/*****************
+ * Profile reordering functions
+ *****************/
+
+/*
+ * Reorders profiles on an interface
+ */
+DWORD ReorderIfaceProfiles (HANDLE h,
+		            const GUID *iface,
+			    const wchar_t *ifname,
+			    WLANKEY *keys){
+	DWORD status;
+	WLAN_PROFILE_INFO_LIST *curprofiles;
+	int end_index = 0;
+	int start_index = 0;
+	int i;
+	int j;
+	
+	status = WlanGetProfileList(h, iface, NULL, &curprofiles);
+	if (status == ERROR_SUCCESS){
+		end_index = curprofiles->dwNumberOfItems - 1;
+	}
+
+	fwprintf (stderr, L"Reordering profiles on interface \"%s\"\n", ifname);
+	fwprintf (stderr, L"    %d profiles on interface\n", end_index + 1);
+	while (keys->ssid[0] != 0){
+		wchar_t *profilename;
+		int index;
+		int profileindex = -1;
+
+		if ((GetVersion() & 0xFF) >= 0x06){ // Windows Vista and above
+			profilename = keys->displayname;
+		} else {
+			profilename = keys->ssid;
+		}
+
+		if (keys->preferred){
+			index = start_index;
+		} else {
+			index = end_index;
+		}
+
+		for (i = 0; i < curprofiles->dwNumberOfItems; i++){
+			if (!wcsncmp(curprofiles->ProfileInfo[i].strProfileName, profilename, 256)){
+				profileindex = i;
+				break;
+			}
+		}
+
+		if (profileindex >= 0){
+			if (profileindex != index){
+				fwprintf (stderr, L"    Moving profile \"%s\" to position %d: ", keys->displayname, index + 1);
+				status = WlanSetProfilePosition(h, iface, profilename, index, NULL);
+				if (status != ERROR_SUCCESS){
+					fwprintf (stderr, L"Error %08X\n", status);
+				} else {
+					fwprintf (stderr, L"Success\n");
+				}
+			} else {
+				fwprintf (stderr, L"    Profile \"%s\" already in position %d\n", keys->displayname, index + 1);
+			}
+
+			if (keys->preferred){
+				start_index++;
+			} else {
+				end_index--;
+			}
+		}
+
+		keys++;
+	}
+
+	return status;
+}
+
+/*
+ * Reorders profiles on all interfaces
+ */
+DWORD ReorderWlanProfiles (WLANKEY *keys){
+	DWORD apiver;
+	DWORD status;
+	HANDLE h;
+	WLAN_INTERFACE_INFO_LIST *iflist;
+	GUID *iface;
+	wchar_t *ifname;
+	unsigned int i;
+	status = WlanOpenHandle (1, NULL, &apiver, &h);
+	if (status != ERROR_SUCCESS){
+		return status;
+	}
+	status = WlanEnumInterfaces (h, NULL, &iflist);
+	for (i=0; status == ERROR_SUCCESS && i < iflist->dwNumberOfItems; i++){
+		iface = &(iflist->InterfaceInfo[i].InterfaceGuid);
+		ifname = iflist->InterfaceInfo[i].strInterfaceDescription;
+		status = ReorderIfaceProfiles (h, iface, ifname, keys);
 	}
 	WlanFreeMemory (iflist);
 	WlanCloseHandle (h, NULL);

@@ -45,6 +45,7 @@ static void WPASelect_DialogCommand(HWND hWnd, WORD control_id, WORD command){
 				memset (key, 0, sizeof(WLANKEY) * 2);
 				memcpy (key, keys + index, sizeof(WLANKEY));
 				status = SetWlanProfiles(key, TRUE, &reason);
+				ReorderWlanProfiles(keys);
 				if (status != ERROR_SUCCESS){
 					char msgbuf[64];
 					snprintf (msgbuf, sizeof(msgbuf), "Error %08X; Reason %08X", status, reason);
