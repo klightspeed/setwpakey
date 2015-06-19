@@ -12,11 +12,14 @@ void Usage(char *progname, WLANKEY *profiles){
 	         "Usage:\n"
 	         "    %s [--clean|--cleanall] [--noreplace] --all\n"
 	         "    %s [--clean|--cleanall] [--noreplace] [--] {SSID} [{SSID} ...]\n"
+		 "    %s [--remove {SSID} [{SSID}]] [--add {SSID} [{SSID}]]\n"
 	         "\n"
 	         "    -a,    --all        Install all following listed profiles\n"
 	         "    -c,    --clean      Remove following listed profiles\n"
 	         "    -c -c, --cleanall   Remove all profiles\n"
 	         "    -n,    --noreplace  Do not replace existing profiles\n"
+		 "    -r,    --remove     Remove profiles identified by SSIDs\n"
+		 "    -s,    --add        Add profiles identified by SSIDs\n"
 	         "           --           All following arguments are SSIDs\n"
 	         "           {SSID}       SSID of profile to install\n",
 	         progname,
@@ -38,6 +41,32 @@ void Usage(char *progname, WLANKEY *profiles){
 	}
 }
 
+WLANKEY *LookupKeys(char **ssids, int numkeys, WLANKEY *allkeys, int *status){
+	int i, j, k;
+	WLANKEY *keys = malloc(numkeys * sizeof(WLANKEY));
+	if (keys == NULL){
+		*status = errno;
+	} else {
+		k = 0;
+		for (i = 0; i < numkeys; i++){
+			char ssid[33];
+			for (j = 0; j < 33; j++){
+				ssid[j] = (char)(allkeys[i].ssid[j]);
+			}
+
+			for (j = 0; ssids[j] != NULL; j++){
+				if (!stricmp(ssids[j], ssid)){
+					memcpy (keys + k, allkeys + i, sizeof(WLANKEY));
+					k++;
+					ssid[0] = 0;
+				}
+			}
+		}
+	}
+
+	return keys;
+}
+
 int main (int argc, char **argv){
 	WLAN_REASON_CODE reason;
 	static wchar_t reasonstr[65536];
@@ -45,6 +74,8 @@ int main (int argc, char **argv){
 	static wchar_t wargv1[65536];
 	int status = ERROR_SUCCESS;
 	int i, j, k;
+	int nraddkeys = 0;
+	int nrdelkeys = 0;
 	int numkeys = 0;
 	BOOL clean_profiles = FALSE;
 	BOOL clean_all_profiles = FALSE;
@@ -52,11 +83,15 @@ int main (int argc, char **argv){
 	BOOL all_profiles = FALSE;
 	BOOL get_help = FALSE;
 	BOOL dashdash = FALSE;
+	BOOL remove = FALSE;
 	WLANKEY *allkeys;
-	WLANKEY *keys;
-	char *ssids[argc];
+	WLANKEY *delkeys;
+	WLANKEY *addkeys;
+	char *addssids[argc];
+	char *delssids[argc];
 
-	memset (ssids, 0, sizeof(ssids));
+	memset (addssids, 0, sizeof(addssids));
+	memset (delssids, 0, sizeof(delssids));
 	
 	for (i = 1; i < argc; i++){
 		if (!dashdash && argv[i][0] == '-'){
@@ -73,6 +108,10 @@ int main (int argc, char **argv){
 					clean_all_profiles = TRUE;
 				} else if (!strcmp(argv[i], "--noreplace")){
 					replace = FALSE;
+				} else if (!strcmp(argv[i], "--remove")){
+					remove = TRUE;
+				} else if (!strcmp(argv[i], "--add")){
+					remove = FALSE;
 				} else {
 					get_help = TRUE;
 					break;
@@ -84,22 +123,30 @@ int main (int argc, char **argv){
 					clean_all_profiles = TRUE;
 				}
 				clean_profiles = TRUE;
+			} else if (!strcmp(argv[i], "-r")){
+				remove = TRUE;
+			} else if (!strcmp(argv[i], "-s")){
+				remove = FALSE;
 			} else if (!strcmp(argv[i], "-n")){
 				replace = FALSE;
 			} else {
 				get_help = TRUE;
 			}
 		} else {
-			ssids[numkeys++] = argv[i];
+			if (remove) {
+				delssids[nrdelkeys++] = argv[i];
+			} else {
+				addssids[nraddkeys++] = argv[i];
+			}
 		}
 	}
 
-	if ((all_profiles && numkeys != 0) ||
-	    (!all_profiles && numkeys == 0)){
+	if ((all_profiles && nraddkeys != 0) ||
+	    (!all_profiles && nraddkeys == 0 && nrdelkeys == 0)){
 		get_help = TRUE;
 	}
 
-	numkeys = 0;
+
 	reason = 0;
 	memset (reasonstr, 0, 65536 * sizeof(wchar_t));
 	status = DecodeWLANKeys (&allkeys, &numkeys);
@@ -110,42 +157,33 @@ int main (int argc, char **argv){
 			return 1;
 		}
 
-		if (all_profiles){
-			keys = allkeys;
-		} else {
-			keys = malloc(numkeys * sizeof(WLANKEY));
-			if (keys == NULL){
-				status = errno;
+		if (clean_profiles){
+			if (clean_all_profiles){
+				delkeys = NULL;
+				nrdelkeys = -1;
 			} else {
-				k = 0;
-				for (i = 0; i < numkeys; i++){
-					char ssid[33];
-					for (j = 0; j < 33; j++){
-						ssid[j] = (char)(allkeys[i].ssid[j]);
-					}
+				delkeys = allkeys;
+				nrdelkeys = numkeys;
+			}
+		} else {
+			delkeys = LookupKeys(delssids, numkeys, allkeys, &status);
+		}
 
-					for (j = 0; ssids[j] != NULL; j++){
-						if (!stricmp(ssids[j], ssid)){
-							memcpy (keys + k, allkeys + i, sizeof(WLANKEY));
-							k++;
-							ssid[0] = 0;
-						}
-					}
-				}
+		if (status == ERROR_SUCCESS){
+			if (all_profiles){
+				addkeys = allkeys;
+			} else {
+				addkeys = LookupKeys(addssids, numkeys, allkeys, &status);
 			}
 		}
 	}
 
 #ifndef TEST
 	if (status == ERROR_SUCCESS){
-		if (clean_profiles){
-			if (clean_all_profiles){
-				RemoveWlanProfiles(NULL, keys);
-			} else {
-				RemoveWlanProfiles(allkeys, keys);
-			}
+		if (nrdelkeys != 0){
+			RemoveWlanProfiles(delkeys, addkeys);
 		}
-		status = SetWlanProfiles (keys, replace, &reason);
+		status = SetWlanProfiles (addkeys, replace, &reason);
 		ReorderWlanProfiles(allkeys);
 	}
 	if (status != ERROR_SUCCESS){
